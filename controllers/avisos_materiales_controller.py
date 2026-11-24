@@ -7,6 +7,7 @@ from models.avisos_materiales_model import AvisosMaterialesModel
 from models.convocatoria_model import ConvocatoriaModel
 from views.ui_utils import parse_fecha
 
+from models.drive_service import DriveService
 
 # Carpeta local donde se conservan los archivos subidos desde el equipo.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,8 @@ class AvisosMaterialesController:
         self.id_usuario = id_usuario
         self.es_admin = bool(es_admin)
         self.model = AvisosMaterialesModel()
-        self.conv_model = ConvocatoriaModel()
+        self.conv_model = ConvocatoriaModel() 
+        self.drive = None
         self.mapa_academias = {}
 
         self.aviso_en_edicion = None
@@ -235,17 +237,17 @@ class AvisosMaterialesController:
 
         preparados = []
         errores = []
+        if self.drive is None:
+            self.drive = DriveService()
         for ruta in archivos:
             try:
-                if not os.path.isfile(ruta):
-                    errores.append(f"{os.path.basename(ruta)}: ya no existe en esa ruta")
+                
+                enlace_drive = self.drive.subir_archivo(ruta)
+                if not enlace_drive:
+                    errores.append(f"{os.path.basename(ruta)}: No se pudo subir a Google Drive.")
                     continue
-                destino = self._copiar_archivo(ruta)
-                preparados.append((
-                    os.path.basename(ruta),
-                    "Archivo cargado desde el equipo.",
-                    destino
-                ))
+                preparados.append((os.path.basename(ruta),"Material disponible en Google Drive.",enlace_drive ))
+                
             except Exception as e:
                 errores.append(f"{os.path.basename(ruta)}: {e}")
 
