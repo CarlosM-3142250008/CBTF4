@@ -6,12 +6,15 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+# se usa drive completo para poder entrar a carpetas compartidas
 SCOPES = ['https://www.googleapis.com/auth/drive']
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials.json')
 TOKEN_PATH = os.path.join(BASE_DIR, 'token.json')
 
-CARPETA_RAIZ_ID = '18o8xOYT658ZUJJVI9KpkIoSLJgCKBYjm' 
+# id de la carpeta raiz CBTF en google drive
+CARPETA_RAIZ_ID = '1Bo8xOYT65BZUJJVI9KpKiOSLjgCKBYjm'
 
 
 class DriveService:
@@ -19,6 +22,7 @@ class DriveService:
         self.service = self.authenticar()
 
     def authenticar(self):
+        # revisa si ya existe el token guardado o abre el navegador para iniciar sesion
         creds = None
         if os.path.exists(TOKEN_PATH):
             creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
@@ -35,7 +39,7 @@ class DriveService:
         return build('drive', 'v3', credentials=creds)
 
     def obtener_o_crear_subcarpeta(self, nombre_carpeta):
-        """Busca la subcarpeta de la academia dentro de CBTF; si no existe, la crea."""
+        # busca la subcarpeta de la academia dentro de CBTF y si no esta la crea
         if not nombre_carpeta:
             return CARPETA_RAIZ_ID
 
@@ -56,6 +60,7 @@ class DriveService:
         if archivos:
             return archivos[0]['id']
 
+        # crea la carpeta nueva adentro de la carpeta raiz
         metadata_carpeta = {
             'name': nombre_carpeta.strip(),
             'mimeType': 'application/vnd.google-apps.folder',
@@ -68,7 +73,7 @@ class DriveService:
         return carpeta.get('id')
 
     def subir_archivo(self, ruta_local, nombre_academia=None):
-        """Sube el archivo dentro de CBTF/<nombre_academia> y devuelve su enlace público."""
+        # sube el archivo a la carpeta de su academia y lo pone publico para lectura
         if not os.path.exists(ruta_local):
             return None
 
@@ -88,6 +93,7 @@ class DriveService:
                 fields='id, webViewLink'
             ).execute()
 
+            # permiso para que cualquier docente con el enlace lo pueda ver
             self.service.permissions().create(
                 fileId=archivo.get('id'),
                 body={'type': 'anyone', 'role': 'reader'}
@@ -100,12 +106,14 @@ class DriveService:
             return None
 
     def eliminar_archivo(self, enlace_drive):
-        """Elimina un archivo en Google Drive a partir de su webViewLink."""
+        # saca el id del link de drive y borra el archivo de la nube
         if not enlace_drive or 'drive.google.com' not in enlace_drive:
             return
+
         match = re.search(r'/d/([a-zA-Z0-9_-]+)', enlace_drive)
         if not match:
             return
+
         file_id = match.group(1)
         try:
             self.service.files().delete(fileId=file_id).execute()
