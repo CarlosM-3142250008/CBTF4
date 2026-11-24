@@ -14,7 +14,7 @@ CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials.json')
 TOKEN_PATH = os.path.join(BASE_DIR, 'token.json')
 
 # id de la carpeta raiz CBTF en google drive
-CARPETA_RAIZ_ID = '1Bo8xOYT65BZUJJVI9KpKiOSLjgCKBYjm'
+CARPETA_RAIZ_ID = '18o8xOYT658ZUJJVI9KpkIoSLJgCKBYjm'
 
 
 class DriveService:
@@ -39,7 +39,7 @@ class DriveService:
         return build('drive', 'v3', credentials=creds)
 
     def obtener_o_crear_subcarpeta(self, nombre_carpeta):
-        # busca la subcarpeta de la academia dentro de CBTF y si no esta la crea
+        print(f"--> Buscando en carpeta raiz ID: [{CARPETA_RAIZ_ID}]")
         if not nombre_carpeta:
             return CARPETA_RAIZ_ID
 
@@ -53,14 +53,15 @@ class DriveService:
         resultados = self.service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id, name)',
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
         ).execute()
         archivos = resultados.get('files', [])
 
         if archivos:
             return archivos[0]['id']
 
-        # crea la carpeta nueva adentro de la carpeta raiz
         metadata_carpeta = {
             'name': nombre_carpeta.strip(),
             'mimeType': 'application/vnd.google-apps.folder',
@@ -68,7 +69,8 @@ class DriveService:
         }
         carpeta = self.service.files().create(
             body=metadata_carpeta,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         return carpeta.get('id')
 
@@ -90,7 +92,8 @@ class DriveService:
             archivo = self.service.files().create(
                 body=metadata,
                 media_body=media,
-                fields='id, webViewLink'
+                fields='id, webViewLink',
+                supportsAllDrives=True
             ).execute()
 
             # permiso para que cualquier docente con el enlace lo pueda ver
