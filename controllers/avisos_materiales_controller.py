@@ -232,6 +232,7 @@ class AvisosMaterialesController:
             )
             return
 
+        # agarra el nombre de la academia seleccionada para crear su carpeta en drive
         categoria = self.view.combo_mat_categoria.get()
         id_destinatario = self.mapa_academias.get(categoria)
 
@@ -241,13 +242,13 @@ class AvisosMaterialesController:
             self.drive = DriveService()
         for ruta in archivos:
             try:
-                
-                enlace_drive = self.drive.subir_archivo(ruta)
+                # sube el archivo a su subcarpeta en drive y regresa el link
+                enlace_drive = self.drive.subir_archivo(ruta, nombre_academia=categoria)
                 if not enlace_drive:
                     errores.append(f"{os.path.basename(ruta)}: No se pudo subir a Google Drive.")
                     continue
-                preparados.append((os.path.basename(ruta),"Material disponible en Google Drive.",enlace_drive ))
-                
+                preparados.append((os.path.basename(ruta), "Material disponible en Google Drive.", enlace_drive))
+
             except Exception as e:
                 errores.append(f"{os.path.basename(ruta)}: {e}")
 
@@ -363,13 +364,21 @@ class AvisosMaterialesController:
         ):
             return
 
+        # guarda los datos del material antes de borrarlo para tener el link
         material = self.model.obtener_material(id_material)
 
         if self.model.eliminar_material(id_material):
             if self.material_en_edicion and self.material_en_edicion.get('id_material') == id_material:
                 self.cancelar_edicion_material()
             if material:
-                self._borrar_archivo_subido(material.get('enlace'))
+                enlace = material.get('enlace')
+                # si el link es de google drive tambien lo borra de ahi
+                if enlace and 'drive.google.com' in enlace:
+                    if self.drive is None:
+                        self.drive = DriveService()
+                    self.drive.eliminar_archivo(enlace)
+                else:
+                    self._borrar_archivo_subido(enlace)
             messagebox.showinfo("Material eliminado", "El material se eliminó correctamente.")
             self.cargar_datos()
         else:
